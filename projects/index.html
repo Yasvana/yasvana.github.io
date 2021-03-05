@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en-US">
+  <head>
+		<meta charset="UTF-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Audio Record and Visualizers</title>
+    <script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
+    <style>
+      canvas {
+        border: 1px solid black;
+      }
+      svg {
+        border: 1px solid black;
+      }
+      fieldset {
+        padding: 1em;
+        margin-bottom: 1em;
+        border-bottom: 0px;
+        border-left: 0px;
+        border-right: 0px;
+      }
+      .top_bar {
+        position: fixed;
+        top: 0;
+        width: 100%;
+        background-color: white;
+        border-bottom: 1px solid grey;
+        padding: 0.5em;
+      }
+      .left_bar {
+        display: inline-block;
+        height: 100%;
+        width: 400px;
+        position: fixed;
+        z-index: 1;
+        top: 0; /* Stay at the top */
+        left: 0;
+        overflow: auto;
+        padding-top: 5em;
+        background-color: #bdc9de ;
+      }
+      .head_title {
+      background-color: #bdc9de ;
+       top: 0;
+        position: fixed;
+        width: 350px;
+        z-index: 2;
+        padding-top: 1em;
+        display: inline-block;
+        font-size: 2em;
+        font-weight:bold;
+        vertical-align:top;
+      }
+      .header_span {
+        font-size: 1.2em;
+        font-weight:bold;
+      }
+      .main {
+        margin-left : 400px;
+      }
+      .top_bar_menu {
+        display: inline-block;
+        vertical-align: top;
+        margin-left: 1em;
+        margin-top: 1em;
+      }
+      .options_visualizer {
+        display: inline-block;
+        width: 370px;
+        vertical-align: middle;
+      }
+      .visualizer {
+        display: inline-block;
+        vertical-align: middle;
+      }
+      .option_title {
+        font-size: 1.1em;
+        font-weight: bold;
+        margin-top: 1em;
+      }
+      .stop_button {
+        background-color: #EE9999;
+        border: none;
+        display: inline-block;
+        border-radius: 8px;
+        width: 40px;
+        height: 40px;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="app_main">
+      <div class="head_title">
+        <span style="vertical-align: top;">Audio Record Test</span>
+        <button onclick="init_audio()" v-show="!global_variables.init_audio">Init Audio</button>
+        <button id="stopBtn" class="stop_button" v-show="global_variables.init_audio && global_variables.is_recording"></button>
+      </div>
+      <div class="left_bar">
+        <div v-show="global_variables.init_audio">
+          <fieldset class="top_bar_menu" >
+            <legend>
+              <span class="header_span">Canvas General Options</span>
+            </legend>
+            <span>AUDIO GAIN</span>
+            <table>
+            <!--<table id="app_audio_gain">-->
+              <tr v-for="(value, name) in audio_gain.generals">
+                <td>{{ name }}</td>
+                <td v-if="audio_gain.generals[name].type == 'text'"><input v-model="audio_gain.generals[name].value"></td>
+                <td v-if="audio_gain.generals[name].type == 'number'"><input v-model.number="audio_gain.generals[name].value" type="number" ></td>
+              </tr>
+            </table>
+          </fieldset>
+          <fieldset class="top_bar_menu">
+            <legend>
+              <span class="header_span">Recording</span>
+              <button id="startBtn" onclick="  var audio_source_selected_element = document.getElementById('audio_source_selected');var audio_source_selected_value = audio_source_selected_element.options[audio_source_selected_element.selectedIndex].value;start(audio_source_selected_value, null);">Start</button>
+            </legend>
+            <span>Select the entry</span>
+            <select id="audio_source_selected">
+              <option value="microphone" selected>Microphone</option>
+              <option value="last_recording">Last recording</option>
+            </select>
+          </fieldset>
+          <fieldset id="record_section" class="top_bar_menu">
+            <legend>
+              <span class="header_span">Last Record From Microphone</span>
+            </legend>
+            <span>Duration</span><span id="timer">0</span><span>ds</span>
+            <audio id="audio_button" controls></audio>
+          </fieldset>
+          <fieldset class="top_bar_menu">
+            <legend>
+              <span class="header_span">Upload File</span>
+            </legend>
+            <div>
+              <span>Upload an audio file: </span>
+              <input id="audioFileChooser" type="file" onchange="readFile(this.files);">
+              <!--<div id="app_list_audio_files_uploaded" v-if="list.length > 0">-->
+              <div v-if="list_audio_files.length > 0">
+                <div v-for="audio in list_audio_files">
+                  <span>{{audio.filename}}</span>
+                  <audio :id="audio.id" controls :src="audio.audioURL"></audio>
+                  <button v-on:click="start('uploaded', audio.id)" class="audio_uploaded_start_button">Start</button>
+                </div>
+              </div>
+            </div>
+          </fieldset>
+          <!-- to avoid the hide from the bottom scroll-->
+          <br>
+          <br>
+          <br>
+          <br>
+          <br>
+        </div>
+      </div>
+      <div class="main" v-show="global_variables.init_audio">
+        <fieldset>
+      <!--  <fieldset id="app_visualizer_time_domain">-->
+          <legend>
+            <span class="header_span">Visualizer by time domain</span>
+            <button id="DOWNLOAD_TO_SVG_CANVAS" v-on:click="downloadSvg('visualizer_by_time_domain_object')">Download SVG</button>
+          </legend>
+          <div class="options_visualizer">
+            <table>
+              <tr>
+                <td>Render Type</td>
+                <td>
+                  <select v-model="time_domain.visualizer_selected.value">
+                    <option value="circle">Along circle</option>
+                    <option value="linear">Along line</option>
+                  </select>
+                </td>
+              </tr>
+            </table>
+            <div class="option_title">Time Domain Analyzer</div>
+            <table>
+              <tr v-for="(value, name) in time_domain.analyzer">
+                <td>{{ name }}</td>
+                <td v-if="time_domain.analyzer[name].type == 'text'"><input v-model="time_domain.analyzer[name].value"></td>
+                <td v-if="time_domain.analyzer[name].type == 'number'"><input v-model.number="time_domain.analyzer[name].value" type="number" ></td>
+              </tr>
+            </table>
+            <div class="option_title">Canvas</div>
+            <table>
+              <tr v-for="(value, name) in time_domain.generals">
+                <td>{{ name }}</td>
+                <td v-if="time_domain.generals[name].type == 'text'"><input v-model="time_domain.generals[name].value"></td>
+                <td v-if="time_domain.generals[name].type == 'number'"><input v-model.number="time_domain.generals[name].value" type="number" ></td>
+              </tr>
+            </table>
+            <div class="option_title">Drawing</div>
+            <table v-if="time_domain.visualizer_selected.value == 'linear'">
+              <tr v-for="(value, name) in time_domain.options_one_path">
+                <td>{{ name }}</td>
+                <td v-if="time_domain.options_one_path[name].type == 'text'"><input v-model="time_domain.options_one_path[name].value"></td>
+                <td v-if="time_domain.options_one_path[name].type == 'number'"><input v-model.number="time_domain.options_one_path[name].value" type="number" ></td>
+              </tr>
+            </table>
+            <table v-if="time_domain.visualizer_selected.value == 'circle'">
+              <tr v-for="(value, name) in time_domain.options_one_path_in_circle">
+                <td>{{ name }}</td>
+                <td v-if="time_domain.options_one_path_in_circle[name].type == 'text'"><input v-model="time_domain.options_one_path_in_circle[name].value"></td>
+                <td v-if="time_domain.options_one_path_in_circle[name].type == 'number'"><input v-model.number="time_domain.options_one_path_in_circle[name].value" type="number" ></td>
+              </tr>
+            </table>
+          </div>
+          <object id="visualizer_by_time_domain_object" class="visualizer">
+            <svg xmlns="http://www.w3.org/2000/svg"  id="svg_by_time_domain" :width="time_domain.generals.width.value" :height="time_domain.generals.height.value"></svg>
+          </object>
+        </fieldset>
+        <fieldset>
+        <!--<fieldset id="app_visualizer_frequency">-->
+          <legend>
+            <span class="header_span">Visualizer by frequency</span>
+            <button id="DOWNLOAD_TO_SVG_CANVAS_BAR" v-on:click="downloadSvg('visualizer_bar_object')">Download SVG</button>
+          </legend>
+          <div class="options_visualizer">
+            <div class="option_title">Frequency Analyzer</div>
+            <table>
+              <tr>
+                <td>Render Type</td>
+                <td>
+                  <select id="CANVAS_BAR_TYPE" v-model="frequency.visualizer_frequency_selected.value">
+                    <option value="circle2" selected>Circle 2 along linear path</option>
+                    <option value="circle">Circle along linear path</option>
+                    <option value="bar_linear">Plain along linear path</option>
+                    <option value="circle_along_circle">Circle along circle path</option>
+                  </select>
+                </td>
+              </tr>
+            </table>
+            <table>
+              <tr v-for="(value, name) in frequency.analyzer">
+                <td>{{ name }}</td>
+                <td v-if="frequency.analyzer[name].type == 'text'"><input v-model="frequency.analyzer[name].value"></td>
+                <td v-if="frequency.analyzer[name].type == 'number'"><input v-model.number="frequency.analyzer[name].value" type="number" ></td>
+              </tr>
+            </table>
+            <div class="option_title">Canvas</div>
+            <table>
+              <tr v-for="(value, name) in frequency.generals">
+                <td>{{ name }}</td>
+                <td v-if="frequency.generals[name].type == 'text'"><input v-model="frequency.generals[name].value"></td>
+                <td v-if="frequency.generals[name].type == 'number'"><input v-model.number="frequency.generals[name].value" type="number" ></td>
+              </tr>
+            </table>
+            <div class="option_title">DRAWING</div>
+            <table v-if="frequency.visualizer_frequency_selected.value == 'bar_linear' ">
+              <tr v-for="(value, name) in frequency.options_bar_linear">
+                <td>{{ name }}</td>
+                <td v-if="frequency.options_bar_linear[name].type == 'text'"><input v-model="frequency.options_bar_linear[name].value"></td>
+                <td v-if="frequency.options_bar_linear[name].type == 'number'"><input v-model.number="frequency.options_bar_linear[name].value" type="number" ></td>
+              </tr>
+            </table>
+            <table v-if="frequency.visualizer_frequency_selected.value == 'circle_along_circle' ">
+              <tr v-for="(value, name) in frequency.options_circle_in_circle">
+                <td>{{ name }}</td>
+                <td v-if="frequency.options_circle_in_circle[name].type == 'text'"><input v-model="frequency.options_circle_in_circle[name].value"></td>
+                <td v-if="frequency.options_circle_in_circle[name].type == 'number'"><input v-model.number="frequency.options_circle_in_circle[name].value" type="number" ></td>
+              </tr>
+            </table>
+            <table v-if="frequency.visualizer_frequency_selected.value == 'circle2' ">
+              <tr v-for="(value, name) in frequency.options_circle_linear_2">
+                <td>{{ name }}</td>
+                <td v-if="frequency.options_circle_linear_2[name].type == 'text'"><input v-model="frequency.options_circle_linear_2[name].value"></td>
+                <td v-if="frequency.options_circle_linear_2[name].type == 'number'"><input v-model.number="frequency.options_circle_linear_2[name].value" type="number" ></td>
+              </tr>
+            </table>
+            <table v-if="frequency.visualizer_frequency_selected.value == 'circle' ">
+              <tr v-for="(value, name) in frequency.options_circle_linear">
+                <td>{{ name }}</td>
+                <td v-if="frequency.options_circle_linear[name].type == 'text'"><input v-model="frequency.options_circle_linear[name].value"></td>
+                <td v-if="frequency.options_circle_linear[name].type == 'number'"><input v-model.number="frequency.options_circle_linear[name].value" type="number" ></td>
+              </tr>
+            </table>
+          </div>
+          <object id="visualizer_bar_object" class="visualizer">
+            <svg xmlns="http://www.w3.org/2000/svg"  id="svg_bar" :width="frequency.generals.width.value" :height="frequency.generals.height.value"></svg>
+          </object>
+        </fieldset>
+      </div>
+    </div>
+    <script src="js/audio.js"></script>
+  </body>
+</html>
