@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en-US">
+<head>
+		<meta charset="UTF-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Compute Svg path length</title>
+    <script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
+  </head>
+  <body>
+		<div>
+			<h2>0. Prerequisites</h2>
+			<span>The algorithm <b>only</b> takes <b>path</b> from the <b>svg</b>. So you have to be sure that all objects are paths.
+		</div>
+		<div id="error"></div>
+		<div>
+			<h2>1. Choose an SVG file</h2>
+			<input type="file" id="file-selector">
+		</div>
+    <div>
+			<h2>2. Computed length for all paths in svg file</h2>
+	    <button onclick="computeLengthAndAdd()">Compute total length</button>
+    </div>
+		<textarea id="lengths" cols="50" rows="6"></textarea>
+		<br/>
+		<br/>
+    <div>
+			<h2>3. Enter the speed to compute the duration</h2>
+			<span>Speed in mm/min</span>
+			<input id="speed">
+	    <button onclick="computeTimeFromSpeed()">Compute duration from speed</button>
+    </div>
+		<div>
+			<h2>4. Duration to follow the path according to the speed</h2>
+			<span>Duration format hour:minute:second</span>
+			<br/>
+			<span id="time" style="font-weight: bold"></span>
+		</div>
+		<br/>
+		<br/>
+		<h2>SVG file content</h2>
+		<div id="svg"></div>
+    <script src="js/engine.js"></script>
+  </body>
+</html>
